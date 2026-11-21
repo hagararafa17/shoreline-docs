@@ -1,0 +1,435 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><style>:root{color-scheme:light}body{margin:0;font:14px system-ui}[hidden]{display:none!important}</style></head><body><title>Shoreline Analytics DFD</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout concept: the textbook data flow diagram (circles for processes, open boxes for stores, labelled arrows),
+     drawn as a hydrographic chart. Each process is a benchmark ring. Data runs as key diamonds along every arrow.
+     No names of people on the chart. */
+  :root {
+    --paper: #F0F4F3;
+    --surface: #FAFCFB;
+    --sea: #D8E7EA;
+    --ink: #0E2A33;
+    --ink2: #4A6670;
+    --line: #8AA3AA;
+    --mag: #B01E63;
+    --f-head: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #091317; --surface: #0E1D23; --sea: #15333D; --ink: #D5E7EB; --ink2: #8DA6AE; --line: #3C5A64; --mag: #FF6FA8;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #091317; --surface: #0E1D23; --sea: #15333D; --ink: #D5E7EB; --ink2: #8DA6AE; --line: #3C5A64; --mag: #FF6FA8;
+    color-scheme: dark;
+  }
+
+  body { background: var(--paper); color: var(--ink); font-family: var(--f-mono); font-size: 12px; line-height: 1.5;
+         padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+         padding-block: 26px 30px; }
+  .wrap { max-width: 1190px; margin: 0 auto; }
+
+  .sheet { position: relative; border: 1px solid var(--ink); padding: 26px 26px 22px; }
+  .sheet::before { content: ""; position: absolute; inset: 6px; border: 1px solid var(--ink); pointer-events: none; }
+  .tk { position: absolute; pointer-events: none; }
+  .tk.t, .tk.b { left: 0; right: 0; height: 6px; background: repeating-linear-gradient(90deg, var(--ink) 0 1px, transparent 1px 40px); }
+  .tk.l, .tk.r { top: 0; bottom: 0; width: 6px; background: repeating-linear-gradient(0deg, var(--ink) 0 1px, transparent 1px 40px); }
+  .tk.t { top: 0; } .tk.b { bottom: 0; } .tk.l { left: 0; } .tk.r { right: 0; }
+
+  .scroller { overflow-x: auto; overflow-y: hidden; }
+  .fit { position: relative; }
+  .stage { position: relative; width: 1120px; height: 760px; transform-origin: 0 0; }
+
+  svg.bathy { position: absolute; inset: 0; width: 100%; height: 100%; overflow: hidden; pointer-events: none; }
+  .bathy g { animation: drift var(--s, 50s) linear infinite; }
+  .bathy path { fill: none; stroke: var(--line); stroke-width: 1; stroke-dasharray: 1 5; stroke-linecap: round; opacity: .55; }
+  .bathy path.ix { stroke-dasharray: none; stroke-width: .8; opacity: .22; }
+  @keyframes drift { to { transform: translateX(-360px); } }
+
+  svg.links { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+  .links path.fl { fill: none; stroke: var(--ink); stroke-width: 1.4; stroke-linejoin: round; }
+  .links g.pend path.fl { stroke: var(--ink2); stroke-dasharray: 6 4; }
+  .links .hit { fill: none; stroke: transparent; stroke-width: 18; pointer-events: stroke; cursor: pointer; }
+  .links .ah { fill: var(--ink); }
+  .links g.pend .ah { fill: var(--ink2); }
+  .links g { transition: opacity .15s; }
+  .links g.on path.fl, .links g:hover path.fl { stroke: var(--mag); stroke-width: 1.9; }
+  .links g.on .ah, .links g:hover .ah { fill: var(--mag); }
+  .links .pt { fill: var(--mag); }
+  .stage.focus .links g:not(.on) { opacity: .22; }
+
+  .lab { position: absolute; font-size: 10.5px; line-height: 1.25; color: var(--ink); background: var(--paper); padding: 0 4px; white-space: nowrap; cursor: pointer; z-index: 3;
+         transition: opacity .15s, color .12s; letter-spacing: .01em; }
+  .lab.pend { color: var(--ink2); }
+  .lab:hover, .lab.on { color: var(--mag); }
+  .stage.focus .lab:not(.on) { opacity: .3; }
+
+  .node { position: absolute; box-sizing: border-box; cursor: pointer; z-index: 2; transition: opacity .15s, box-shadow .18s, border-color .15s; }
+  .node:focus-visible, .lab:focus-visible, .btn:focus-visible, .replay:focus-visible { outline: 2px solid var(--mag); outline-offset: 3px; }
+  .stage.focus .node:not(.sel):not(.rel) { opacity: .4; }
+
+  /* process: benchmark ring */
+  .node.proc { border-radius: 50%; background: var(--surface); border: 1.4px solid var(--ink); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 14px; }
+  .node.proc::before { content: ""; position: absolute; inset: 6px; border-radius: 50%; border: 1px solid var(--line); pointer-events: none; }
+  .node.proc.pend { border-style: dashed; border-color: var(--ink2); }
+  .node.proc.pend::before { border-style: dashed; }
+  .node.proc.sel { border-color: var(--mag); box-shadow: 0 0 0 5px var(--sea); }
+  .pn { font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: .06em; line-height: 1; color: var(--ink2); margin-bottom: 5px; }
+  .pt2 { font-weight: 500; font-size: 12px; line-height: 1.3; }
+  .pstate { position: absolute; left: 50%; top: 100%; transform: translateX(-50%); margin-top: 9px; white-space: nowrap; font-family: var(--f-head); font-weight: 500; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink2); }
+
+  /* external entity: plain box with an inner rule */
+  .node.ext { background: var(--surface); border: 1.4px solid var(--ink); display: flex; flex-direction: column; justify-content: center; padding: 0 14px; }
+  .node.ext::before { content: ""; position: absolute; inset: 5px; border: 1px solid var(--line); pointer-events: none; }
+  .node.ext.pend { border-style: dashed; border-color: var(--ink2); }
+  .node.ext.sel { border-color: var(--mag); box-shadow: 5px 5px 0 var(--sea); }
+  .nt { font-weight: 500; font-size: 13px; line-height: 1.3; }
+  .ns { font-size: 10.5px; color: var(--ink2); margin-top: 3px; line-height: 1.3; }
+
+  /* data store: two rules and an id cell, open on the right */
+  .node.store { display: flex; background: var(--surface); border-top: 1.4px solid var(--ink); border-bottom: 1.4px solid var(--ink); border-left: 1.4px solid var(--ink); }
+  .node.store .sid { flex: 0 0 38px; background: var(--sea); border-right: 1.4px solid var(--ink); display: grid; place-items: center; font-family: var(--f-head); font-weight: 600; font-size: 16px; letter-spacing: .05em; }
+  .node.store .sb { padding: 0 12px; min-width: 0; flex: 1; display: flex; flex-direction: column; justify-content: center; }
+  .node.store.big .sb { justify-content: flex-start; padding-top: 12px; }
+  .node.store.pend { border-style: dashed; border-color: var(--ink2); }
+  .node.store.sel { border-color: var(--mag); box-shadow: 5px 5px 0 var(--sea); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .chip { border: 1px solid var(--ink); padding: 1px 7px; font-size: 10px; background: var(--paper); }
+  .chip.p { border-style: dashed; border-color: var(--ink2); color: var(--ink2); }
+
+  /* title block / details */
+  .insp { position: absolute; left: 0; top: 400px; width: 500px; height: 340px; box-sizing: border-box; background: var(--surface);
+          border: 1.25px solid var(--ink); padding: 20px 22px 16px; overflow: auto; z-index: 4; }
+  .insp::after { content: ""; position: absolute; inset: 4px; border: 1px solid var(--line); pointer-events: none; }
+  .k { font-family: var(--f-head); font-weight: 500; font-size: 12.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink2); margin: 0 0 8px; }
+  .insp h1 { font-family: var(--f-head); font-weight: 600; font-size: 52px; line-height: .95; letter-spacing: .01em; text-transform: uppercase; margin: 0 0 12px; }
+  .insp h2 { font-weight: 500; font-size: 15px; margin: 0 0 8px; }
+  .insp p { margin: 0 0 10px; color: var(--ink2); }
+  .insp .s { font-family: var(--f-head); font-weight: 500; font-size: 17px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink); margin: 0; }
+  .insp hr { border: 0; border-top: 1px solid var(--line); margin: 14px 0 12px; }
+  .insp h3 { font-family: var(--f-head); font-weight: 500; font-size: 12.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink2); margin: 10px 0 4px; }
+  .insp ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+  .insp li { padding-left: 14px; position: relative; font-size: 11.5px; }
+  .insp li::before { content: ""; position: absolute; left: 1px; top: .55em; width: 5px; height: 5px; border: 1px solid var(--ink2); transform: rotate(45deg); }
+  .back { all: unset; cursor: pointer; font-size: 11px; color: var(--mag); display: inline-block; margin-bottom: 10px; }
+  .back:hover { text-decoration: underline; }
+  .cap { color: var(--ink) !important; font-size: 13px; line-height: 1.5; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
+  .arrow { display: flex; align-items: center; gap: 8px; margin: 2px 0 10px; font-size: 12px; flex-wrap: wrap; }
+  .arrow span { border: 1px solid var(--ink); padding: 1px 7px; background: var(--paper); }
+  .lgd { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 4px; color: var(--ink2); font-size: 11px; }
+  .lgd i { display: inline-block; width: 22px; height: 0; border-top: 1.5px solid var(--ink); vertical-align: middle; margin-right: 7px; }
+  .lgd i.d { border-top: 1.5px dashed var(--ink2); }
+
+  .geo { margin: 10px 2px 0; font-size: 10.5px; color: var(--ink2); letter-spacing: .04em; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .replay { all: unset; cursor: pointer; color: var(--ink2); }
+  .replay:hover { color: var(--mag); text-decoration: underline; }
+
+  .sweep { position: absolute; top: -14px; bottom: -14px; left: 0; width: 0; border-left: 1px solid var(--mag); opacity: 0; pointer-events: none; z-index: 6; }
+  .sweep .ro { position: absolute; top: 22px; right: 7px; font-size: 10.5px; color: var(--mag); background: var(--paper); padding: 0 4px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+  .stage.intro .sweep { animation: sweep 1.9s linear .05s both; }
+  @keyframes sweep { 0% { transform: translateX(0); opacity: 0; } 6% { opacity: 1; } 94% { opacity: 1; } 100% { transform: translateX(1120px); opacity: 0; } }
+  .stage.intro .node, .stage.intro .insp { animation: pop .7s cubic-bezier(.2,.7,.2,1) var(--d, 0s) backwards; }
+  @keyframes pop { from { opacity: 0; transform: scale(.94); } }
+  .stage.intro .links path.fl:not(.pd) { stroke-dasharray: 1; stroke-dashoffset: 0; animation: draw .7s cubic-bezier(.5, 0, .2, 1) var(--fd, 2s) backwards; }
+  @keyframes draw { from { stroke-dashoffset: 1; } }
+  .stage.intro .links .pd, .stage.intro .links .ah, .stage.intro .lab { animation: fadein .5s ease-out var(--fd, 2s) backwards; }
+  @keyframes fadein { from { opacity: 0; } }
+  .stage.intro .bathy { animation: fadein 1.6s ease-out backwards; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .links .pt, .sweep { display: none; }
+  }
+</style>
+
+<div class="wrap">
+  <figure style="margin:0">
+    <div class="sheet">
+      <i class="tk t"></i><i class="tk b"></i><i class="tk l"></i><i class="tk r"></i>
+      <div class="scroller" id="scroller">
+        <div class="fit" id="fit">
+          <div class="stage" id="stage">
+            <svg class="bathy" id="bathy" aria-hidden="true"></svg>
+            <svg class="links" id="links" role="img" aria-label="Data flow: Sentinel-2 imagery is ingested, turned into shoreline lines, loaded into the PostGIS database, turned into erosion rates, risk classes and confidence scores, and served to the dashboard user."></svg>
+            <aside class="insp" id="insp" aria-live="polite"></aside>
+            <div class="sweep" id="sweep" aria-hidden="true"><span class="ro" id="ro">29.885°E</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <figcaption class="geo">
+      <span>29.885°E – 30.016°E · 31.1°N – 31.3°N · EPSG:32636</span>
+      <button class="replay" id="replay" type="button">↻ Replay survey</button>
+    </figcaption>
+  </figure>
+</div>
+
+<script>
+(function () {
+  /* proc nodes are circles given by centre (cx, cy) and radius r; ext and store are boxes (x, y, w, h). */
+  var NODES = [
+    { id: 'E1', kind: 'ext', x: 0, y: 55, w: 130, h: 90, title: 'Sentinel-2', sub: 'Planetary Computer',
+      what: 'The satellite imagery source: Microsoft Planetary Computer, collection sentinel-2-l2a.' },
+    { id: 'P1', kind: 'proc', num: '1.0', cx: 300, cy: 100, r: 62, title: 'Ingest imagery',
+      what: 'Searches for one Sentinel-2 scene under 10% cloud for each summer, 2018 to 2026, and saves the Green and NIR bands.' },
+    { id: 'D1', kind: 'store', num: 'D1', x: 440, y: 72, w: 130, h: 56, title: 'Raw rasters',
+      what: 'The Green (B03) and NIR (B08) bands for every year.' },
+    { id: 'P2', kind: 'proc', num: '2.0', cx: 710, cy: 100, r: 62, title: 'Extract shorelines',
+      what: 'Computes NDWI, separates water from land, traces the shoreline as lines and cuts it into the three sectors. Precision is about 10 m.' },
+    { id: 'D2', kind: 'store', num: 'D2', x: 850, y: 72, w: 150, h: 56, title: 'Handoff files',
+      what: 'sectors.gpkg and the ANALYSIS shoreline file (215 segments) handed over by the remote-sensing team.' },
+    { id: 'P4', kind: 'proc', num: '4.0', cx: 710, cy: 300, r: 62, title: 'Compute erosion rate',
+      what: 'Measures how far each sector shoreline moved between two years, in metres per year, with its uncertainty. Periods that start or end in 2024 are marked, because the 2024 imagery is unclear.' },
+    { id: 'P3', kind: 'proc', num: '3.0', cx: 925, cy: 300, r: 62, title: 'Load into PostGIS',
+      what: 'Checks CRS and geometry, then loads the sectors and 215 shoreline segments in one transaction. Nothing is saved unless the counts match.' },
+    { id: 'D3', kind: 'store', big: 1, num: 'D3', x: 560, y: 430, w: 560, h: 104, title: 'PostGIS · shoreline_db',
+      chips: [['sectors', 0], ['shoreline_segments', 0], ['erosion_rates', 0], ['risk_assessments', 0], ['risk_thresholds', 0], ['confidence_parameters', 0]],
+      what: 'The project database: PostgreSQL 17 with PostGIS 3.5, schema shoreline, all geometry in EPSG:32636. Six tables, three views and the assess_risk() function.' },
+    { id: 'P5', kind: 'proc', num: '5.0', cx: 640, cy: 650, r: 62, title: 'Risk and Confidence',
+      what: 'Gives each erosion rate one of five Risk Classes (USGS limits) and a Confidence Score from 0 to 1. Limits and weights are stored in two small tables.' },
+    { id: 'P6', kind: 'proc', num: '6.0', cx: 860, cy: 650, r: 62, title: 'API and dashboard',
+      what: 'The Flask API and the Streamlit map read results from the database and show them to the user.' },
+    { id: 'E2', kind: 'ext', x: 990, y: 605, w: 130, h: 90, title: 'Dashboard user', sub: '',
+      what: 'Anyone looking at the coastal erosion map.' }
+  ];
+
+  /* pts: absolute points; arrow at the last point. lab: [text, x, y, anchor] */
+  var FLOWS = [
+    { id: 'F1', name: 'Scene search', what: 'STAC query: bounding box 29.8–30.1°E, 31.1–31.3°N, June to August, cloud cover under 10%.', from: 'E1', to: 'P1', a: ['E1', 'r'], b: ['P1', 'l'], lab: ['scenes', 'c', -7] },
+    { id: 'F2', name: 'Green and NIR bands', what: 'The B03 and B08 rasters of the chosen scene.', from: 'P1', to: 'D1', a: ['P1', 'r'], b: ['D1', 'l'], lab: ['B03 · B08', 'c', -7] },
+    { id: 'F3', name: 'Rasters', what: 'Green and NIR, read back for the NDWI calculation.', from: 'D1', to: 'P2', a: ['D1', 'r'], b: ['P2', 'l'], lab: ['B03 · B08', 'c', -7] },
+    { id: 'F4', name: 'Shoreline lines', what: 'Shoreline lines per sector and year, plus the sector polygons.', from: 'P2', to: 'D2', a: ['P2', 'r'], b: ['D2', 'l'], lab: ['shorelines', 'c', -7] },
+    { id: 'F5', name: 'Shorelines by year', what: 'The yearly shorelines, to be compared against each other.', from: 'D2', to: 'P4',
+      pts: [[870, 128], [870, 205], [710, 205], [710, 238]], lab: ['shorelines by year', 790, 205, 'above'] },
+    { id: 'F6', name: 'Erosion rates', what: 'Erosion rate per sector and period, metres per year, with uncertainty and coverage.', from: 'P4', to: 'P3', a: ['P4', 'r'], b: ['P3', 'l'], lab: ['erosion rates', 'c', -7] },
+    { id: 'F7', name: 'Sectors and shorelines', what: 'sectors.gpkg and the ANALYSIS shoreline file.', from: 'D2', to: 'P3',
+      pts: [[925, 128], [925, 238]], lab: ['sectors + shorelines', 925, 183, 'right'] },
+    { id: 'F8', name: 'Load', what: 'INSERT inside one transaction. Row counts are checked before the commit.', from: 'P3', to: 'D3',
+      pts: [[925, 362], [925, 430]], lab: ['load', 925, 396, 'right'] },
+    { id: 'F9', name: 'Erosion rates', what: 'Erosion rates with their uncertainty.', from: 'D3', to: 'P5',
+      pts: [[620, 534], [620, 591.3]], lab: ['erosion rates', 620, 563, 'left'] },
+    { id: 'F10', name: 'Risk and confidence', what: 'One Risk Class and one Confidence Score per erosion rate.', from: 'P5', to: 'D3',
+      pts: [[660, 591.3], [660, 534]], lab: ['risk + confidence', 660, 563, 'right'] },
+    { id: 'F11', name: 'Query results', what: 'Sectors, shorelines, erosion rates and risk, read by the API.', from: 'D3', to: 'P6',
+      pts: [[860, 534], [860, 588]], lab: ['query results', 860, 561, 'right'] },
+    { id: 'F12', name: 'Maps and risk', what: 'The map, the risk colours and the confidence shown on the dashboard.', from: 'P6', to: 'E2', a: ['P6', 'r'], b: ['E2', 'l'], lab: ['map, risk', 'c', -7] }
+  ];
+
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var stage = document.getElementById('stage'), svg = document.getElementById('links'), insp = document.getElementById('insp');
+  var N = {}, nodeEl = {}, labEl = {}, F = {}, state = { sel: null, flow: null };
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+
+  (function bathy() {
+    var el = document.getElementById('bathy'), out = '';
+    for (var k = 0; k < 7; k++) {
+      var y0 = 40 + k * 118, a1 = 7 + (k % 3) * 3, a2 = 3 + (k % 2) * 2, ph = k * 0.9, d = '';
+      for (var x = -360; x <= 1480; x += 10) {
+        var y = y0 + a1 * Math.sin(2 * Math.PI * x / 360 + ph) + a2 * Math.sin(2 * Math.PI * x / 180 + ph * 2);
+        d += (x === -360 ? 'M' : 'L') + x + ',' + y.toFixed(1);
+      }
+      out += '<g style="--s:' + (46 + k * 7) + 's"><path' + (k % 3 === 0 ? ' class="ix"' : '') + ' d="' + d + '"/></g>';
+    }
+    el.setAttribute('viewBox', '0 0 1120 760');
+    el.innerHTML = out;
+  })();
+
+  /* ---------- nodes ---------- */
+  NODES.forEach(function (n) {
+    N[n.id] = n;
+    var el = document.createElement('div');
+    el.className = 'node ' + n.kind + (n.state === 'pend' ? ' pend' : '') + (n.big ? ' big' : '');
+    el.tabIndex = 0; el.setAttribute('role', 'button'); el.setAttribute('aria-label', n.title);
+    var left, top, w, h;
+    if (n.kind === 'proc') { left = n.cx - n.r; top = n.cy - n.r; w = h = n.r * 2; } else { left = n.x; top = n.y; w = n.w; h = n.h; }
+    n.L = left; n.T = top; n.W = w; n.H = h;
+    el.style.left = left + 'px'; el.style.top = top + 'px'; el.style.width = w + 'px'; el.style.height = h + 'px';
+    var row = top < 200 ? 0 : top < 380 ? 1 : top < 560 ? 2 : 3;
+    n.d = Math.max(0, (left + w * 0.2) / 1120 * 1.9 - 0.15) + row * 0.1;
+    el.style.setProperty('--d', n.d.toFixed(2) + 's');
+    var html = '';
+    if (n.kind === 'proc') {
+      html = '<div class="pn">' + n.num + '</div><div class="pt2">' + esc(n.title) + '</div>' + (n.note ? '<div class="pstate">' + esc(n.note) + '</div>' : '');
+    } else if (n.kind === 'store') {
+      html = '<div class="sid">' + n.num + '</div><div class="sb"><div class="nt">' + esc(n.title) + '</div>' +
+        (n.chips ? '<div class="chips">' + n.chips.map(function (c) { return '<span class="chip' + (c[1] ? ' p' : '') + '">' + c[0] + '</span>'; }).join('') + '</div>' : '') + '</div>';
+    } else {
+      html = '<div class="nt">' + esc(n.title) + '</div>' + (n.sub ? '<div class="ns">' + esc(n.sub) + '</div>' : '');
+    }
+    el.innerHTML = html;
+    el.addEventListener('click', function (e) { e.stopPropagation(); pickNode(n.id); });
+    el.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pickNode(n.id); } });
+    stage.appendChild(el);
+    nodeEl[n.id] = el;
+  });
+
+  function anchor(a, off) {
+    var n = N[a[0]], s = a[1];
+    if (n.kind === 'proc') {
+      var o = off || 0, d = Math.sqrt(n.r * n.r - o * o);
+      if (s === 'l') return [n.cx - d, n.cy + o];
+      if (s === 'r') return [n.cx + d, n.cy + o];
+      if (s === 't') return [n.cx + o, n.cy - d];
+      return [n.cx + o, n.cy + d];
+    }
+    if (s === 'l') return [n.x, n.y + n.h / 2];
+    if (s === 'r') return [n.x + n.w, n.y + n.h / 2];
+    if (s === 't') return [n.x + n.w / 2, n.y];
+    return [n.x + n.w / 2, n.y + n.h];
+  }
+
+  var partTimer = 0;
+  function drawLinks() {
+    var out = '';
+    FLOWS.forEach(function (f, i) {
+      F[f.id] = f;
+      var pts = f.pts || [anchor(f.a), anchor(f.b)];
+      f.pts = pts;
+      var len = 0, k;
+      for (k = 1; k < pts.length; k++) len += Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]);
+      f.len = len; f.dur = Math.max(1.6, len / 60);
+      var path = 'M' + pts.map(function (p) { return p[0] + ',' + p[1]; }).join(' L');
+      var q = pts[pts.length - 1], p0 = pts[pts.length - 2];
+      var dx = q[0] - p0[0], dy = q[1] - p0[1], l = Math.hypot(dx, dy), ux = dx / l, uy = dy / l;
+      var ah = 'M' + q[0] + ',' + q[1] + ' L' + (q[0] - ux * 10 - uy * 5) + ',' + (q[1] - uy * 10 + ux * 5) + ' L' + (q[0] - ux * 10 + uy * 5) + ',' + (q[1] - uy * 10 - ux * 5) + 'Z';
+      var parts = '';
+      if (!f.pend) {
+        [0, 1].forEach(function (n) {
+          var id = f.id + 'p' + n;
+          parts += '<path class="pt" opacity="0" d="M0,-3.6 3.6,0 0,3.6 -3.6,0Z">' +
+            '<animateMotion id="' + id + '" dur="' + f.dur.toFixed(2) + 's" begin="indefinite" repeatCount="indefinite" rotate="0" path="' + path + '"/>' +
+            '<animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.15;.85;1" dur="' + f.dur.toFixed(2) + 's" begin="' + id + '.begin" repeatCount="indefinite"/></path>';
+        });
+      }
+      f.fd = 1.9 + i * 0.07;
+      out += '<g data-f="' + f.id + '"' + (f.pend ? ' class="pend"' : '') + ' style="--fd:' + f.fd.toFixed(2) + 's">' +
+        '<path class="fl' + (f.pend ? ' pd' : '') + '" pathLength="1" d="' + path + '"/><path class="ah" d="' + ah + '"/>' +
+        '<path class="hit" d="' + path + '"/>' + parts + '</g>';
+
+      /* label */
+      var L = f.lab, lx, ly, tr = '';
+      if (L[1] === 'c') { lx = (pts[0][0] + q[0]) / 2; ly = pts[0][1] + L[2]; tr = 'translate(-50%,-100%)'; }
+      else if (L[3] === 'above') { lx = L[1]; ly = L[2] - 6; tr = 'translate(-50%,-100%)'; }
+      else if (L[3] === 'right') { lx = L[1] + 8; ly = L[2]; tr = 'translate(0,-50%)'; }
+      else { lx = L[1] - 8; ly = L[2]; tr = 'translate(-100%,-50%)'; }
+      var t = document.createElement('button');
+      t.type = 'button'; t.className = 'lab' + (f.pend ? ' pend' : ''); t.textContent = L[0];
+      t.setAttribute('aria-label', f.id + ' ' + f.name); t.style.all = '';
+      t.style.left = lx + 'px'; t.style.top = ly + 'px'; t.style.transform = tr; t.style.setProperty('--fd', f.fd.toFixed(2) + 's');
+      t.style.border = '0'; t.style.font = 'inherit'; t.style.fontSize = '10.5px';
+      t.addEventListener('click', function (e) { e.stopPropagation(); pickFlow(f.id); });
+      stage.appendChild(t); labEl[f.id] = t;
+    });
+    svg.innerHTML = out;
+  }
+  svg.addEventListener('click', function (e) {
+    var g = e.target.closest ? e.target.closest('g[data-f]') : null;
+    if (g) { e.stopPropagation(); pickFlow(g.getAttribute('data-f')); }
+  });
+  function startParticles(delayMs) {
+    clearTimeout(partTimer);
+    if (reduce) return;
+    partTimer = setTimeout(function () {
+      FLOWS.forEach(function (f) {
+        if (f.pend) return;
+        [0, 1].forEach(function (n) {
+          var a = document.getElementById(f.id + 'p' + n);
+          if (a && a.beginElementAt) { try { a.endElement(); } catch (e) {} a.beginElementAt(n * f.dur / 2); }
+        });
+      });
+    }, delayMs);
+  }
+
+  function inOf(id) { return FLOWS.filter(function (f) { return f.to === id; }); }
+  function outOf(id) { return FLOWS.filter(function (f) { return f.from === id; }); }
+  function li(f) { return '<li>' + esc(f.name) + '</li>'; }
+
+  /* ---------- panel ---------- */
+  var KIND = { ext: 'External entity', proc: 'Process', store: 'Data store' };
+  function overview() {
+    insp.innerHTML = '<p class="k">Alexandria coast · 2018–2026</p><h1>Shoreline<br>Analytics</h1><p class="s">Data flow diagram</p>' +
+      '<hr><p class="k" style="margin:0">Select a shape or an arrow label</p>';
+  }
+  function nodeView(n) {
+    var ins = inOf(n.id), outs = outOf(n.id);
+    insp.innerHTML = '<button class="back" type="button" id="back">← Overview</button>' +
+      '<p class="k">' + KIND[n.kind] + '</p>' +
+      '<h2>' + (n.kind === 'proc' ? n.num + ' ' : n.kind === 'store' ? n.num + ' ' : '') + esc(n.title) + '</h2><p class="cap">' + esc(n.what) + '</p>' +
+      '<div class="two"><div>' + (ins.length ? '<h3>Receives</h3><ul>' + ins.map(li).join('') + '</ul>' : '') + '</div>' +
+      '<div>' + (outs.length ? '<h3>Sends</h3><ul>' + outs.map(li).join('') + '</ul>' : '') + '</div></div>';
+    document.getElementById('back').addEventListener('click', function (e) { e.stopPropagation(); clear(); });
+  }
+  function flowView(f) {
+    insp.innerHTML = '<button class="back" type="button" id="back">← Overview</button>' +
+      '<p class="k">Data flow</p><h2>' + esc(f.name) + '</h2>' +
+      '<div class="arrow"><span>' + esc(N[f.from].title) + '</span>→<span>' + esc(N[f.to].title) + '</span></div>' +
+      '<p class="cap">' + esc(f.what) + '</p>';
+    document.getElementById('back').addEventListener('click', function (e) { e.stopPropagation(); clear(); });
+  }
+
+  function pickNode(id) { if (state.sel === id) { clear(); return; } state.sel = id; state.flow = null; paint(); }
+  function pickFlow(id) { if (state.flow === id) { clear(); return; } state.sel = null; state.flow = id; paint(); }
+  function clear() { state.sel = null; state.flow = null; paint(); }
+
+  function paint() {
+    var rel = {}, onF = {};
+    Object.keys(nodeEl).forEach(function (k) { nodeEl[k].classList.remove('sel', 'rel'); });
+    Object.keys(labEl).forEach(function (k) { labEl[k].classList.remove('on'); });
+    svg.querySelectorAll('g').forEach(function (g) { g.classList.remove('on'); });
+    var focus = !!(state.sel || state.flow);
+    stage.classList.toggle('focus', focus);
+    if (!focus) { overview(); return; }
+    if (state.sel) {
+      nodeEl[state.sel].classList.add('sel');
+      inOf(state.sel).concat(outOf(state.sel)).forEach(function (f) { onF[f.id] = 1; rel[f.from] = 1; rel[f.to] = 1; });
+    } else {
+      var f = F[state.flow]; onF[f.id] = 1; rel[f.from] = 1; rel[f.to] = 1;
+    }
+    Object.keys(rel).forEach(function (k) { if (k !== state.sel) nodeEl[k].classList.add('rel'); });
+    Object.keys(onF).forEach(function (k) {
+      labEl[k].classList.add('on');
+      var g = svg.querySelector('g[data-f="' + k + '"]'); if (g) g.classList.add('on');
+    });
+    if (state.sel) nodeView(N[state.sel]); else flowView(F[state.flow]);
+  }
+
+  insp.addEventListener('click', function (e) { e.stopPropagation(); });
+  document.getElementById('scroller').addEventListener('click', clear);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') clear(); });
+
+  var ro = document.getElementById('ro'), introEnd = 0, raf = 0;
+  function readout(t0) {
+    cancelAnimationFrame(raf);
+    (function step(now) {
+      var p = Math.min(Math.max((now - t0 - 50) / 1900, 0), 1);
+      ro.textContent = (29.885 + p * (30.016 - 29.885)).toFixed(3) + '°E';
+      if (p < 1) raf = requestAnimationFrame(step);
+    })(performance.now());
+  }
+  function play() {
+    clearTimeout(introEnd);
+    if (reduce) { startParticles(0); return; }
+    stage.classList.remove('intro'); void stage.offsetWidth; stage.classList.add('intro');
+    readout(performance.now());
+    startParticles(3000);
+    introEnd = setTimeout(function () { stage.classList.remove('intro'); }, 4100);
+  }
+  document.getElementById('replay').addEventListener('click', function () { clear(); play(); });
+
+  var scroller = document.getElementById('scroller'), fit = document.getElementById('fit');
+  function resize() {
+    var avail = scroller.clientWidth, k = avail >= 1120 ? 1 : Math.max(avail / 1120, 0.57);
+    stage.style.transform = k < 1 ? 'scale(' + k + ')' : 'none';
+    fit.style.width = (1120 * k) + 'px'; fit.style.height = (760 * k) + 'px';
+  }
+  drawLinks(); overview(); resize(); play();
+  window.addEventListener('resize', resize);
+})();
+</script>
+</body></html>

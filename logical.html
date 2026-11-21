@@ -1,0 +1,90 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><style>:root{color-scheme:light}body{margin:0;font:14px system-ui}[hidden]{display:none!important}</style></head><body><title>Shoreline Logical Schema</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout concept: the legend block of a survey sheet. One ruled row per team member; the rings repeat the
+     process numbers of the data flow diagram so every role can be found on it. */
+  :root {
+    --paper: #F0F4F3; --surface: #FAFCFB; --sea: #D8E7EA; --ink: #0E2A33; --ink2: #4A6670; --line: #8AA3AA; --mag: #B01E63;
+    --f-head: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --paper: #091317; --surface: #0E1D23; --sea: #15333D; --ink: #D5E7EB; --ink2: #8DA6AE; --line: #3C5A64; --mag: #FF6FA8; color-scheme: dark; }
+  }
+  :root[data-theme="dark"] { --paper: #091317; --surface: #0E1D23; --sea: #15333D; --ink: #D5E7EB; --ink2: #8DA6AE; --line: #3C5A64; --mag: #FF6FA8; color-scheme: dark; }
+
+  body { background: var(--paper); color: var(--ink); font-family: var(--f-mono); font-size: 12px; line-height: 1.5;
+         padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 26px 30px; }
+  .wrap { max-width: 1190px; margin: 0 auto; }
+  .sheet { position: relative; border: 1px solid var(--ink); padding: 26px 26px 26px; }
+  .sheet::before { content: ""; position: absolute; inset: 6px; border: 1px solid var(--ink); pointer-events: none; }
+  .tk { position: absolute; pointer-events: none; }
+  .tk.t, .tk.b { left: 0; right: 0; height: 6px; background: repeating-linear-gradient(90deg, var(--ink) 0 1px, transparent 1px 40px); }
+  .tk.l, .tk.r { top: 0; bottom: 0; width: 6px; background: repeating-linear-gradient(0deg, var(--ink) 0 1px, transparent 1px 40px); }
+  .tk.t { top: 0; } .tk.b { bottom: 0; } .tk.l { left: 0; } .tk.r { right: 0; }
+
+  .inner { padding: 14px 18px 6px; }
+  .k { font-family: var(--f-head); font-weight: 500; font-size: 12.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink2); margin: 0 0 6px; }
+  h1 { font-family: var(--f-head); font-weight: 600; font-size: 52px; line-height: .95; letter-spacing: .01em; text-transform: uppercase; margin: 0 0 22px; }
+
+  .row { display: grid; grid-template-columns: minmax(180px, 250px) 1fr minmax(210px, 300px); gap: 8px 32px; padding: 20px 0; border-top: 1px solid var(--ink); align-items: start; }
+  .row:last-child { border-bottom: 1px solid var(--ink); }
+  .who h2 { font-family: var(--f-head); font-weight: 600; font-size: 30px; line-height: 1; letter-spacing: .02em; text-transform: uppercase; margin: 0 0 6px; }
+  .who p { margin: 0; color: var(--ink2); font-size: 11.5px; }
+  .does h3, .rings h3 { font-family: var(--f-head); font-weight: 500; font-size: 12.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink2); margin: 0 0 6px; }
+  .does ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  .does li { padding-left: 15px; position: relative; font-size: 12px; }
+  .does li::before { content: ""; position: absolute; left: 1px; top: .55em; width: 5px; height: 5px; border: 1px solid var(--ink2); transform: rotate(45deg); }
+  .does li.todo { color: var(--ink2); }
+  .does li.todo::before { border-style: dashed; }
+  .ring-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .ring { width: 58px; height: 58px; border-radius: 50%; border: 1.4px solid var(--ink); background: var(--surface); display: grid; place-items: center; position: relative;
+          font-family: var(--f-head); font-weight: 600; font-size: 17px; letter-spacing: .05em; color: var(--ink2); }
+  .ring::before { content: ""; position: absolute; inset: 4px; border-radius: 50%; border: 1px solid var(--line); }
+  .ring.pend { border-style: dashed; border-color: var(--ink2); }
+  .ring.pend::before { border-style: dashed; }
+  .ring small { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 3px; white-space: nowrap; font-family: var(--f-mono); font-weight: 400; font-size: 9.5px; letter-spacing: 0; color: var(--ink2); }
+  .ring-row { padding-bottom: 14px; }
+  .note { margin: 18px 0 0; color: var(--ink2); font-size: 11px; display: flex; gap: 20px; flex-wrap: wrap; }
+  .note i { display: inline-block; width: 18px; height: 0; border-top: 1.5px solid var(--ink); vertical-align: middle; margin-right: 7px; }
+  .note i.d { border-top-style: dashed; border-color: var(--ink2); }
+
+  .row { animation: rise .6s cubic-bezier(.2,.7,.2,1) calc(var(--i) * .08s) backwards; }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+  @media (prefers-reduced-motion: reduce) { .row { animation: none; } }
+  @media (max-width: 760px) { .row { grid-template-columns: 1fr; } h1 { font-size: 40px; } .inner { padding-inline: 4px; } }
+
+
+.ents{align-items:start;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,470px),1fr));gap:18px;margin:6px 0 26px}
+.ent{border:1px solid var(--ink);background:var(--surface);position:relative;animation:rise .6s cubic-bezier(.2,.7,.2,1) calc(var(--i)*.07s) backwards;min-width:0}
+.ent::after{content:"";position:absolute;inset:3px;border:1px solid var(--line);pointer-events:none}
+.ent header{padding:12px 16px 8px;border-bottom:1px solid var(--ink);position:relative;z-index:1}
+.ent h2{font-family:var(--f-head);font-weight:600;font-size:24px;letter-spacing:.03em;text-transform:uppercase;margin:0;line-height:1}
+.ent header p{margin:4px 0 0;color:var(--ink2);font-size:11.5px}
+.tw{overflow-x:auto;position:relative;z-index:1}
+table{border-collapse:collapse;width:100%;font-size:11.5px}
+th{font-family:var(--f-head);font-weight:500;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink2);text-align:left;padding:7px 10px;border-bottom:1px solid var(--line)}
+td{padding:6px 10px;border-bottom:1px solid var(--sea);vertical-align:top}
+td:first-child{font-weight:500;overflow-wrap:break-word;min-width:130px}
+td.ty{color:var(--ink2);white-space:nowrap}
+.key{display:inline-block;font-family:var(--f-head);font-weight:600;font-size:12px;letter-spacing:.08em;color:var(--mag);border:1px solid var(--mag);padding:0 5px;line-height:1.35}
+h3.s{font-family:var(--f-head);font-weight:500;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink2);margin:8px 0 10px}
+.rels{display:grid;gap:0;border-top:1px solid var(--ink);margin-bottom:26px}
+.rel{display:grid;grid-template-columns:minmax(0,1.3fr) 90px minmax(0,1.3fr) minmax(0,2fr);gap:8px 16px;padding:10px 0;border-bottom:1px solid var(--line);align-items:baseline}
+.rel b{font-weight:500}.rel .c{font-family:var(--f-head);font-weight:600;font-size:17px;letter-spacing:.06em;color:var(--mag);text-align:center}
+.rel span.d{color:var(--ink2)}
+ul.rules{list-style:none;padding:0;margin:0 0 20px;display:grid;gap:6px}
+ul.rules li{padding-left:16px;position:relative}ul.rules li::before{content:"";position:absolute;left:1px;top:.55em;width:5px;height:5px;border:1px solid var(--ink2);transform:rotate(45deg)}
+.nf{border:1px solid var(--ink);padding:12px 16px;background:var(--surface);position:relative}
+.nf::after{content:"";position:absolute;inset:3px;border:1px solid var(--line);pointer-events:none}
+.nf p{margin:0;position:relative;z-index:1}
+@media(max-width:760px){.rel{grid-template-columns:1fr}.rel .c{text-align:left}}
+</style>
+<div class="wrap"><div class="sheet"><i class="tk t"></i><i class="tk b"></i><i class="tk l"></i><i class="tk r"></i>
+<div class="inner"><p class="k">Alexandria coast · 2018–2026</p><h1>Logical schema</h1>
+<h3 class="s">Entities</h3><div class="ents"><section class="ent" style="--i:0"><header><h2>sectors</h2><p>One study zone of the coast.</p></header><div class="tw"><table><tr><th>Attribute</th><th>Type</th><th>Key</th><th>Meaning</th></tr><tr><td>sector_id</td><td class="ty">integer</td><td><span class=key>PK</span></td><td>Identifier of the sector</td></tr><tr><td>sector_name</td><td class="ty">text, unique</td><td></td><td>Name: Montaza, Eastern Harbour, Alexandria West</td></tr><tr><td>geom</td><td class="ty">polygon</td><td></td><td>Outline of the working zone (EPSG:32636)</td></tr></table></div></section><section class="ent" style="--i:1"><header><h2>shoreline_segments</h2><p>One extracted shoreline line, per year and sector.</p></header><div class="tw"><table><tr><th>Attribute</th><th>Type</th><th>Key</th><th>Meaning</th></tr><tr><td>segment_pk</td><td class="ty">integer</td><td><span class=key>PK</span></td><td>Identifier</td></tr><tr><td>sector_id</td><td class="ty">integer</td><td><span class=key>FK</span></td><td>Sector the line belongs to</td></tr><tr><td>obs_year</td><td class="ty">year 2018–2026</td><td></td><td>Year of the satellite scene</td></tr><tr><td>segment_id</td><td class="ty">integer</td><td></td><td>Number inside its sector and year</td></tr><tr><td>revised_segment_id</td><td class="ty">integer, unique</td><td></td><td>Number used in the team&#x27;s ANALYSIS files</td></tr><tr><td>dataset_source</td><td class="ty">text</td><td></td><td>Original scenes (2018–2024) or alternative scenes (2025–2026)</td></tr><tr><td>length_m</td><td class="ty">decimal</td><td></td><td>Length of the line in metres</td></tr><tr><td>method / status</td><td class="ty">text</td><td></td><td>How it was extracted; PROVISIONAL until validated</td></tr><tr><td>mean_boundary_distance_m, within_20m_pct, proximity_status</td><td class="ty">decimal, decimal, text</td><td></td><td>Quality checks against the reference water boundary (empty for 2025–2026)</td></tr><tr><td>validation_note</td><td class="ty">text</td><td></td><td>Free note from the remote-sensing team</td></tr><tr><td>geom</td><td class="ty">line</td><td></td><td>The shoreline itself</td></tr></table></div></section><section class="ent" style="--i:2"><header><h2>erosion_rates</h2><p>Shoreline change of one sector over one period.</p></header><div class="tw"><table><tr><th>Attribute</th><th>Type</th><th>Key</th><th>Meaning</th></tr><tr><td>erosion_id</td><td class="ty">integer</td><td><span class=key>PK</span></td><td>Identifier</td></tr><tr><td>sector_id</td><td class="ty">integer</td><td><span class=key>FK</span></td><td>Sector measured</td></tr><tr><td>start_year, end_year</td><td class="ty">year</td><td></td><td>The period; end must be after start</td></tr><tr><td>mean_change_m</td><td class="ty">decimal</td><td></td><td>Average change: + seaward, − landward</td></tr><tr><td>rate_m_per_year</td><td class="ty">decimal</td><td></td><td>Change divided by the years</td></tr><tr><td>uncertainty_m_per_year</td><td class="ty">decimal</td><td></td><td>About one pixel per shoreline, spread over the years</td></tr><tr><td>n_transects, coverage_pct</td><td class="ty">integer, decimal</td><td></td><td>How many sample points found a match, and the share</td></tr><tr><td>method, computed_at</td><td class="ty">text, time</td><td></td><td>Which calculation made the rate, and when</td></tr></table></div></section><section class="ent" style="--i:3"><header><h2>risk_thresholds</h2><p>The five risk classes and their limits.</p></header><div class="tw"><table><tr><th>Attribute</th><th>Type</th><th>Key</th><th>Meaning</th></tr><tr><td>risk_class</td><td class="ty">text</td><td><span class=key>PK</span></td><td>VERY_LOW, LOW, MODERATE, HIGH, VERY_HIGH</td></tr><tr><td>risk_rank</td><td class="ty">1–5</td><td></td><td>1 is lowest risk</td></tr><tr><td>rate_min, rate_max</td><td class="ty">decimal</td><td></td><td>Rate limits in m per year (empty = no limit)</td></tr><tr><td>description</td><td class="ty">text</td><td></td><td>Plain-words meaning</td></tr></table></div></section><section class="ent" style="--i:4"><header><h2>confidence_parameters</h2><p>The settings of the Confidence Score.</p></header><div class="tw"><table><tr><th>Attribute</th><th>Type</th><th>Key</th><th>Meaning</th></tr><tr><td>param_name</td><td class="ty">text</td><td><span class=key>PK</span></td><td>For example w_coverage</td></tr><tr><td>param_value</td><td class="ty">decimal</td><td></td><td>Weight, year or penalty</td></tr><tr><td>description</td><td class="ty">text</td><td></td><td>What the setting does</td></tr></table></div></section><section class="ent" style="--i:5"><header><h2>risk_assessments</h2><p>One Risk Class and one Confidence Score per erosion rate.</p></header><div class="tw"><table><tr><th>Attribute</th><th>Type</th><th>Key</th><th>Meaning</th></tr><tr><td>risk_id</td><td class="ty">integer</td><td><span class=key>PK</span></td><td>Identifier</td></tr><tr><td>erosion_id</td><td class="ty">integer, unique</td><td><span class=key>FK</span></td><td>The erosion rate being judged</td></tr><tr><td>risk_class</td><td class="ty">text</td><td><span class=key>FK</span></td><td>Class taken from risk_thresholds</td></tr><tr><td>class_probability</td><td class="ty">0–1</td><td></td><td>Chance the true rate is in that class</td></tr><tr><td>confidence_score</td><td class="ty">0–1</td><td></td><td>How far to trust the result</td></tr><tr><td>assessed_at</td><td class="ty">time</td><td></td><td>When it was assessed</td></tr></table></div></section></div><h3 class="s">Relationships</h3><div class="rels"><div class="rel"><b>sectors</b><span class="c">1 : many</span><b>shoreline_segments</b><span class="d">A sector has many shoreline lines, one set for each year.</span></div><div class="rel"><b>sectors</b><span class="c">1 : many</span><b>erosion_rates</b><span class="d">A sector has one erosion rate for each period.</span></div><div class="rel"><b>erosion_rates</b><span class="c">1 : 1</span><b>risk_assessments</b><span class="d">Each erosion rate has exactly one assessment.</span></div><div class="rel"><b>risk_thresholds</b><span class="c">1 : many</span><b>risk_assessments</b><span class="d">A class can be given to many assessments.</span></div></div><h3 class="s">Rules the database enforces</h3><ul class="rules"><li>The scene source must match the year: 2018–2024 use the original scenes, 2025–2026 the alternative scenes.</li><li>A period always ends after it starts, and both years lie in 2018–2026.</li><li>Uncertainty is above zero, coverage is between 0 and 100, probability and confidence are between 0 and 1.</li><li>One rate per sector, period and method, so another method can be stored beside the first.</li><li>Deleting an erosion rate deletes its assessment.</li></ul><div class="nf"><p>Third normal form: every attribute depends on the key of its own entity and nothing else. Risk limits and Confidence weights live in their own entities, so changing a rule means changing a row, not the design.</p></div>
+</div></div></div>
+<script></script>
+</body></html>
