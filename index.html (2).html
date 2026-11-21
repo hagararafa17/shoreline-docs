@@ -1,0 +1,299 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><style>:root{color-scheme:light}body{margin:0;font:14px system-ui}[hidden]{display:none!important}</style></head><body><title>Shoreline Analytics ERD</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout concept: a hydrographic survey sheet. Double neatline with graticule ticks,
+     square-cornered tables like chart legends, one ink colour on a cool paper ground,
+     and a single chart-magenta used only for keys and the current selection. */
+  :root {
+    --paper: #F0F4F3;
+    --surface: #FAFCFB;
+    --sea: #D8E7EA;
+    --ink: #0E2A33;
+    --ink2: #4A6670;
+    --line: #8AA3AA;
+    --mag: #B01E63;
+    --f-head: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #091317; --surface: #0E1D23; --sea: #15333D; --ink: #D5E7EB; --ink2: #8DA6AE; --line: #3C5A64; --mag: #FF6FA8;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #091317; --surface: #0E1D23; --sea: #15333D; --ink: #D5E7EB; --ink2: #8DA6AE; --line: #3C5A64; --mag: #FF6FA8;
+    color-scheme: dark;
+  }
+
+  body { background: var(--paper); color: var(--ink); font-family: var(--f-mono); font-size: 12px; line-height: 1.5;
+         padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+         padding-block: 26px 30px; }
+  .wrap { max-width: 1190px; margin: 0 auto; }
+
+  .sheet { position: relative; border: 1px solid var(--ink); padding: 26px 26px 22px; }
+  .sheet::before { content: ""; position: absolute; inset: 6px; border: 1px solid var(--ink); pointer-events: none; }
+  .tk { position: absolute; pointer-events: none; }
+  .tk.t, .tk.b { left: 0; right: 0; height: 6px; background: repeating-linear-gradient(90deg, var(--ink) 0 1px, transparent 1px 40px); }
+  .tk.l, .tk.r { top: 0; bottom: 0; width: 6px; background: repeating-linear-gradient(0deg, var(--ink) 0 1px, transparent 1px 40px); }
+  .tk.t { top: 0; } .tk.b { bottom: 0; } .tk.l { left: 0; } .tk.r { right: 0; }
+
+  .scroller { overflow-x: auto; }
+  .fit { position: relative; }
+  .stage { position: relative; width: 1120px; height: 780px; transform-origin: 0 0; }
+  svg.links { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+  .links path.rel { fill: none; stroke: var(--ink2); stroke-width: 1.25; }
+  .links .glyph { fill: none; stroke: var(--ink2); stroke-width: 1.25; }
+  .links .dot { fill: var(--paper); }
+  .links g { transition: opacity .15s; }
+  .links g.on path.rel, .links g.on .glyph { stroke: var(--mag); stroke-width: 1.75; }
+  .stage.focus .links g:not(.on) { opacity: .25; }
+
+  .tbl { position: absolute; box-sizing: border-box; background: var(--surface); border: 1.25px solid var(--ink); transition: opacity .15s; }
+  .tbl.planned { border-style: dashed; border-color: var(--ink2); }
+  .tbl.sel { border-color: var(--mag); }
+  .stage.focus .tbl:not(.sel):not(.rel) { opacity: .4; }
+  .th { all: unset; box-sizing: border-box; display: flex; width: 100%; height: 40px; align-items: center; justify-content: space-between;
+        padding: 0 12px; cursor: pointer; background: var(--sea); border-bottom: 1.25px solid var(--ink); }
+  .planned .th { background: transparent; border-bottom: 1.25px dashed var(--ink2); }
+  .tn { font-weight: 500; font-size: 13px; letter-spacing: .01em; }
+  .meta { font-family: var(--f-head); font-weight: 500; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink2); }
+  .row { display: flex; align-items: center; height: 28px; padding: 0 12px 0 10px; gap: 8px; cursor: pointer; }
+  .row + .row { border-top: 1px solid color-mix(in srgb, var(--line) 35%, transparent); }
+  .row:hover, .row.sel, .row.ref { background: var(--sea); }
+  .th:focus-visible, .row:focus-visible, .back:focus-visible { outline: 2px solid var(--mag); outline-offset: -2px; }
+  .kg { flex: 0 0 12px; height: 12px; }
+  .kg svg { display: block; }
+  .cn { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row.pkrow .cn { font-weight: 500; }
+  .ct { flex: 0 0 auto; font-size: 10.5px; color: var(--ink2); }
+
+  .id { text-transform: none; letter-spacing: .02em; }
+  .insp { position: absolute; left: 800px; top: 0; width: 320px; height: 447px; box-sizing: border-box; background: var(--surface);
+          border: 1.25px solid var(--ink); padding: 20px 20px 16px; overflow: auto; }
+  .insp::after { content: ""; position: absolute; inset: 4px; border: 1px solid var(--line); pointer-events: none; }
+  .k { font-family: var(--f-head); font-weight: 500; font-size: 12.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink2); margin: 0 0 8px; }
+  .insp h1 { font-family: var(--f-head); font-weight: 600; font-size: 44px; line-height: .95; letter-spacing: .01em; text-transform: uppercase; margin: 0 0 14px; }
+  .insp h2 { font-weight: 500; font-size: 15px; margin: 0 0 8px; word-break: break-all; }
+  .insp p { margin: 0 0 10px; color: var(--ink2); }
+  .insp .s { font-family: var(--f-head); font-weight: 500; font-size: 17px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink); margin: 0; }
+  .insp hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0 12px; }
+  .insp h3 { font-family: var(--f-head); font-weight: 500; font-size: 12.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink2); margin: 10px 0 4px; }
+  .insp ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+  .insp li { padding-left: 14px; position: relative; font-size: 11.5px; }
+  .insp li::before { content: ""; position: absolute; left: 1px; top: .55em; width: 5px; height: 5px; border: 1px solid var(--ink2); transform: rotate(45deg); }
+  .insp code { background: var(--sea); padding: 0 3px; }
+  .back { all: unset; cursor: pointer; font-size: 11px; color: var(--mag); display: inline-block; margin-bottom: 10px; }
+  .back:hover { text-decoration: underline; }
+
+  .geo { margin: 10px 2px 0; font-size: 10.5px; color: var(--ink2); letter-spacing: .04em; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <figure style="margin:0">
+    <div class="sheet">
+      <i class="tk t"></i><i class="tk b"></i><i class="tk l"></i><i class="tk r"></i>
+      <div class="scroller" id="scroller">
+        <div class="fit" id="fit">
+          <div class="stage" id="stage">
+            <svg class="links" id="links" role="img" aria-label="One sector has many shoreline segments and many erosion rates. One erosion rate has many risk assessments."></svg>
+            <aside class="insp" id="insp" aria-live="polite"></aside>
+          </div>
+        </div>
+      </div>
+    </div>
+    <figcaption class="geo">29.885°E – 30.016°E · 31.1°N – 31.3°N · EPSG:32636</figcaption>
+  </figure>
+</div>
+
+<script>
+(function () {
+  var TABLES = [
+    { id: 'sectors', planned: false, x: 0, y: 273, w: 250, meta: '3 rows',
+      purpose: 'The three study areas. Shoreline segments and erosion rates belong to a sector.',
+      cols: [
+        { n: 'sector_id', t: 'serial', k: 'pk', note: 'Key generated by the database.' },
+        { n: 'sector_name', t: 'varchar(50)', note: 'Corniche Infill, Eastern Harbour or Montaza Bay. Unique.' },
+        { n: 'geom', t: 'geometry', note: 'Polygon, SRID 32636. A provisional rectangular working zone.' }
+      ],
+      rules: ['<code>sector_name</code> is unique', '<code>geom</code> is a Polygon in SRID 32636'] },
+
+    { id: 'shoreline_segments', planned: false, x: 330, y: 0, w: 370, meta: '215 rows',
+      purpose: 'One row per shoreline segment (LineString) per sector and year. Precision is about 10 m, the pixel size.',
+      cols: [
+        { n: 'segment_pk', t: 'serial', k: 'pk', note: 'Key generated by the database.' },
+        { n: 'sector_id', t: 'integer', k: 'fk', ref: ['sectors', 'sector_id'], note: 'The sector this segment lies in.' },
+        { n: 'obs_year', t: 'smallint', note: 'Observation year, 2018 to 2026.' },
+        { n: 'segment_id', t: 'integer', note: 'Segment number within its sector and year, from the source file.' },
+        { n: 'revised_segment_id', t: 'integer', note: 'Id used in the team ANALYSIS files. Unique.' },
+        { n: 'dataset_source', t: 'varchar(40)', note: 'ORIGINAL_SCENES_2018_2024 or ALTERNATIVE_SCENES_2025_2026.' },
+        { n: 'length_m', t: 'numeric(10,2)', note: 'Segment length in metres. Length is not an erosion rate.' },
+        { n: 'method', t: 'varchar(40)', note: 'Extraction method: Southernmost sea pixel.' },
+        { n: 'status', t: 'varchar(30)', note: 'PROVISIONAL_UNVALIDATED until independent validation arrives.' },
+        { n: 'mean_boundary_distance_m', t: 'numeric(6,2)', note: 'Mean distance to the reference water boundary. Empty for 2025 and 2026.' },
+        { n: 'within_20m_pct', t: 'numeric(5,2)', note: 'Share of the line within 20 m of that boundary. Empty for 2025 and 2026.' },
+        { n: 'proximity_status', t: 'varchar(30)', note: 'HIGH (90% or more), MODERATE (75 to 90%) or LOW (below 75%). Empty for 2025 and 2026.' },
+        { n: 'validation_note', t: 'text', note: 'Caveat from the processing team: not independently verified.' },
+        { n: 'geom', t: 'geometry', note: 'LineString, SRID 32636, with a GiST spatial index.' }
+      ],
+      rules: ['Unique: <code>revised_segment_id</code>, and <code>(obs_year, sector_id, segment_id)</code>',
+              '<code>obs_year</code> between 2018 and 2026',
+              '<code>dataset_source</code> follows the year: original to 2024, alternative from 2025',
+              'Indexes: GiST on <code>geom</code>; B-tree on <code>(sector_id, obs_year)</code>'] },
+
+    { id: 'erosion_rates', planned: true, x: 330, y: 490, w: 370, meta: 'planned',
+      purpose: 'Shoreline change per sector and period. The method is still to be agreed with the team.',
+      cols: [
+        { n: 'erosion_id', t: 'serial', k: 'pk', note: 'Key generated by the database.' },
+        { n: 'sector_id', t: 'integer', k: 'fk', ref: ['sectors', 'sector_id'], note: 'The sector this rate describes.' },
+        { n: 'start_year', t: 'smallint', note: 'First year of the comparison period.' },
+        { n: 'end_year', t: 'smallint', note: 'Last year of the comparison period.' },
+        { n: 'rate_m_per_year', t: 'numeric(8,3)', note: 'Negative means landward (erosion), positive means seaward (accretion).' },
+        { n: 'uncertainty_m', t: 'numeric(8,3)', note: 'Positional uncertainty in metres, around 10 m from the pixel size.' },
+        { n: 'method', t: 'varchar(60)', note: 'How the rate was computed. To be agreed.' },
+        { n: 'computed_at', t: 'timestamp', note: 'When the row was computed. Defaults to now().' }
+      ],
+      rules: ['<code>(sector_id, start_year, end_year, method)</code> is unique', 'Needs: the agreed erosion-rate method'] },
+
+    { id: 'risk_assessments', planned: true, x: 800, y: 490, w: 320, meta: 'planned',
+      purpose: 'Risk Class and Confidence Score for each erosion rate. Thresholds and formula are still to be agreed.',
+      cols: [
+        { n: 'risk_id', t: 'serial', k: 'pk', note: 'Key generated by the database.' },
+        { n: 'erosion_id', t: 'integer', k: 'fk', ref: ['erosion_rates', 'erosion_id'], note: 'The erosion rate being classified. The sector is reached through it.' },
+        { n: 'risk_class', t: 'varchar(10)', note: 'LOW, MEDIUM or HIGH.' },
+        { n: 'confidence_score', t: 'numeric(4,3)', note: 'From 0 to 1.' },
+        { n: 'assessed_at', t: 'timestamp', note: 'When the assessment was made. Defaults to now().' }
+      ],
+      rules: ['<code>risk_class</code> is LOW, MEDIUM or HIGH', '<code>confidence_score</code> between 0 and 1', 'Needs: thresholds and the score formula'] }
+  ];
+
+  var RELS = [
+    { id: 'r1', from: ['sectors', 'sector_id'], to: ['shoreline_segments', 'sector_id'], trunk: 290, text: 'One sector has many shoreline segments.' },
+    { id: 'r2', from: ['sectors', 'sector_id'], to: ['erosion_rates', 'sector_id'], trunk: 290, text: 'One sector has many erosion rates.' },
+    { id: 'r3', from: ['erosion_rates', 'erosion_id'], to: ['risk_assessments', 'erosion_id'], trunk: null, text: 'One erosion rate can have several risk assessments.' }
+  ];
+
+  var stage = document.getElementById('stage'), svg = document.getElementById('links'), insp = document.getElementById('insp');
+  var byId = {}, rowEl = {}, tblEl = {}, state = { table: null, col: null };
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+
+  var GLYPH = {
+    pk: '<svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 1 11 6 6 11 1 6Z" fill="var(--mag)"/></svg>',
+    fk: '<svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 1.5 10.5 6 6 10.5 1.5 6Z" fill="none" stroke="var(--mag)" stroke-width="1.3"/></svg>'
+  };
+
+  TABLES.forEach(function (t) {
+    byId[t.id] = t;
+    var el = document.createElement('div');
+    el.className = 'tbl' + (t.planned ? ' planned' : '');
+    el.style.left = t.x + 'px'; el.style.top = t.y + 'px'; el.style.width = t.w + 'px';
+    var h = document.createElement('button');
+    h.className = 'th'; h.type = 'button';
+    h.innerHTML = '<span class="tn">' + t.id + '</span><span class="meta">' + t.meta + '</span>';
+    h.addEventListener('click', function (e) { e.stopPropagation(); pick(t.id, null); });
+    el.appendChild(h);
+    t.cols.forEach(function (c) {
+      var r = document.createElement('div');
+      r.className = 'row' + (c.k === 'pk' ? ' pkrow' : '');
+      r.tabIndex = 0; r.setAttribute('role', 'button');
+      r.innerHTML = '<span class="kg">' + (c.k ? GLYPH[c.k] : '') + '</span><span class="cn">' + c.n + '</span><span class="ct">' + esc(c.t) + '</span>';
+      r.addEventListener('click', function (e) { e.stopPropagation(); pick(t.id, c.n); });
+      r.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(t.id, c.n); } });
+      el.appendChild(r);
+      rowEl[t.id + '.' + c.n] = r;
+    });
+    stage.appendChild(el);
+    tblEl[t.id] = el;
+  });
+
+  function anchorY(key) { var r = rowEl[key]; return r.parentNode.offsetTop + r.offsetTop + r.offsetHeight / 2; }
+
+  function drawLinks() {
+    var out = '';
+    RELS.forEach(function (rel) {
+      var pt = tblEl[rel.from[0]], ct = tblEl[rel.to[0]];
+      var px = pt.offsetLeft + pt.offsetWidth, py = anchorY(rel.from.join('.'));
+      var cx = ct.offsetLeft, cy = anchorY(rel.to.join('.'));
+      var tx = rel.trunk || (px + cx) / 2;
+      var s = cy > py ? 1 : -1, d = Math.abs(cy - py), r = Math.min(10, d / 2);
+      var path = d < 1 ? 'M' + px + ',' + py + ' H' + cx
+        : 'M' + px + ',' + py + ' H' + (tx - r) + ' Q' + tx + ',' + py + ' ' + tx + ',' + (py + s * r) +
+          ' V' + (cy - s * r) + ' Q' + tx + ',' + cy + ' ' + (tx + r) + ',' + cy + ' H' + cx;
+      /* parent end: exactly one (two bars). child end: zero or many (circle and crow's foot). */
+      var g = '<path class="glyph" d="M' + (px + 9) + ',' + (py - 6) + ' V' + (py + 6) + ' M' + (px + 14) + ',' + (py - 6) + ' V' + (py + 6) + '"/>' +
+              '<path class="glyph" d="M' + (cx - 13) + ',' + cy + ' L' + cx + ',' + (cy - 6) + ' M' + (cx - 13) + ',' + cy + ' L' + cx + ',' + (cy + 6) + ' M' + (cx - 13) + ',' + cy + ' H' + cx + '"/>' +
+              '<circle class="glyph dot" cx="' + (cx - 19) + '" cy="' + cy + '" r="3.6"/>';
+      out += '<g data-rel="' + rel.id + '"><path class="rel" d="' + path + '"/>' + g + '</g>';
+    });
+    svg.innerHTML = out;
+  }
+
+  function relsOf(id) { return RELS.filter(function (r) { return r.from[0] === id || r.to[0] === id; }); }
+
+  function overview() {
+    insp.innerHTML = '<p class="k">Alexandria coast · 2018–2026</p><h1>Shoreline<br>Analytics</h1><p class="s">Entity–relationship diagram</p>' +
+      '<hr><p class="k" style="margin:0">Select a table or a column</p>';
+  }
+  function tableView(t) {
+    insp.innerHTML = '<button class="back" type="button" id="back">← Overview</button>' +
+      '<p class="k">' + (t.planned ? 'Planned' : 'Loaded') + ' · ' + (t.planned ? 'not created yet' : t.meta) + '</p>' +
+      '<h2>' + t.id + '</h2><p>' + esc(t.purpose) + '</p>' +
+      '<h3>Links</h3><ul>' + relsOf(t.id).map(function (r) { return '<li>' + r.text + '</li>'; }).join('') + '</ul>' +
+      '<h3>Rules</h3><ul>' + t.rules.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul>';
+  }
+  function colView(t, c) {
+    var f = [c.k === 'pk' ? 'Primary key' : c.k === 'fk' ? 'Foreign key' : null].filter(Boolean);
+    insp.innerHTML = '<button class="back" type="button" id="back">← ' + t.id + '</button>' +
+      '<p class="k"><span class="id">' + t.id + '</span></p><h2>' + c.n + '</h2><p><code>' + esc(c.t) + '</code>' + (f.length ? ' · ' + f[0] : '') + '</p><p>' + esc(c.note) + '</p>' +
+      (c.ref ? '<h3>Points to</h3><ul><li><code>' + c.ref[0] + '.' + c.ref[1] + '</code></li></ul>' : '');
+  }
+
+  function pick(tid, col) {
+    if (state.table === tid && state.col === col && col === null) { tid = null; }
+    state.table = tid; state.col = col; paint();
+  }
+  function clear() { state.table = null; state.col = null; paint(); }
+
+  function paint() {
+    var tid = state.table, related = {}, onRel = {};
+    Object.keys(rowEl).forEach(function (k) { rowEl[k].classList.remove('sel', 'ref'); });
+    Object.keys(tblEl).forEach(function (k) { tblEl[k].classList.remove('sel', 'rel'); });
+    svg.querySelectorAll('g').forEach(function (g) { g.classList.remove('on'); });
+    stage.classList.toggle('focus', !!tid);
+    if (!tid) { overview(); return; }
+    var t = byId[tid];
+    tblEl[tid].classList.add('sel');
+    relsOf(tid).forEach(function (r) { onRel[r.id] = 1; related[r.from[0]] = 1; related[r.to[0]] = 1; });
+    Object.keys(related).forEach(function (k) { tblEl[k].classList.add('rel'); });
+    svg.querySelectorAll('g').forEach(function (g) { if (onRel[g.getAttribute('data-rel')]) g.classList.add('on'); });
+    if (state.col) {
+      var c = t.cols.filter(function (x) { return x.n === state.col; })[0];
+      rowEl[tid + '.' + c.n].classList.add('sel');
+      if (c.ref) { rowEl[c.ref.join('.')].classList.add('ref'); tblEl[c.ref[0]].classList.add('rel'); }
+      colView(t, c);
+      document.getElementById('back').addEventListener('click', function (e) { e.stopPropagation(); pick(tid, null); });
+    } else {
+      tableView(t);
+      document.getElementById('back').addEventListener('click', function (e) { e.stopPropagation(); clear(); });
+    }
+  }
+
+  document.getElementById('scroller').addEventListener('click', clear);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') clear(); });
+
+  var scroller = document.getElementById('scroller'), fit = document.getElementById('fit');
+  function resize() {
+    var avail = scroller.clientWidth, k = avail >= 1120 ? 1 : Math.max(avail / 1120, 0.57);
+    stage.style.transform = k < 1 ? 'scale(' + k + ')' : 'none';
+    fit.style.width = (1120 * k) + 'px'; fit.style.height = (780 * k) + 'px';
+  }
+  function start() { drawLinks(); overview(); resize(); }
+  if (document.fonts && document.fonts.ready) { document.fonts.ready.then(start); }
+  start();
+  window.addEventListener('resize', resize);
+})();
+</script>
+</body></html>
