@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Shoreline Analytics Database</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* One link for every diagram: a thin survey-sheet header with tabs, and each diagram in its own frame. */
+  :root {
+    --paper: #F0F4F3; --surface: #FAFCFB; --sea: #D8E7EA; --ink: #0E2A33; --ink2: #4A6670; --line: #8AA3AA; --mag: #B01E63;
+    --f-head: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --paper: #091317; --surface: #0E1D23; --sea: #15333D; --ink: #D5E7EB; --ink2: #8DA6AE; --line: #3C5A64; --mag: #FF6FA8; color-scheme: dark; }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--paper); color: var(--ink); font-family: var(--f-mono); font-size: 12px; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--paper); border-bottom: 1px solid var(--ink);
+           padding: 12px max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); }
+  .in { max-width: 1190px; margin: 0 auto; display: flex; align-items: flex-end; justify-content: space-between; gap: 8px 24px; flex-wrap: wrap; }
+  .brand { padding-bottom: 10px; }
+  .brand b { display: block; font-family: var(--f-head); font-weight: 600; font-size: 24px; letter-spacing: .04em; text-transform: uppercase; line-height: 1; }
+  .brand span { color: var(--ink2); font-size: 10.5px; letter-spacing: .04em; }
+  nav { display: flex; gap: 2px; }
+  nav button { all: unset; cursor: pointer; padding: 9px 16px 8px; font-family: var(--f-head); font-weight: 500; font-size: 14px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink2);
+               border: 1px solid transparent; border-bottom: 0; position: relative; top: 1px; }
+  nav button:hover { color: var(--ink); }
+  nav button[aria-selected="true"] { color: var(--ink); background: var(--paper); border-color: var(--ink); }
+  nav button[aria-selected="true"]::after { content: ""; position: absolute; left: -1px; right: -1px; bottom: -1px; height: 1px; background: var(--paper); }
+  nav button[aria-selected="true"] i { background: var(--mag); }
+  nav i { display: inline-block; width: 6px; height: 6px; background: transparent; border: 1px solid var(--mag); transform: rotate(45deg); margin-right: 9px; vertical-align: 1px; }
+  nav button[aria-selected="true"] i { background: var(--mag); }
+  nav button:focus-visible { outline: 2px solid var(--mag); outline-offset: -2px; }
+  iframe { display: block; width: 100%; border: 0; background: var(--paper); min-height: 900px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="in">
+    <div class="brand"><b>Shoreline Analytics</b><span>PostGIS database · Alexandria coast · EPSG:32636</span></div>
+    <nav role="tablist" aria-label="Diagrams">
+      <button role="tab" id="t-er" data-v="er" aria-selected="true"><i></i>ER</button>
+      <button role="tab" id="t-dfd" data-v="dfd" aria-selected="false"><i></i>DFD</button>
+    </nav>
+  </div>
+</header>
+<main><iframe id="f" title="Diagram" src="er.html"></iframe></main>
+<script>
+(function () {
+  var frame = document.getElementById('f'), tabs = document.querySelectorAll('nav button');
+  var views = { er: 'er.html', dfd: 'dfd.html' };
+  function fit() {
+    try {
+      var d = frame.contentDocument;
+      if (d && d.documentElement) { frame.style.height = Math.max(900, d.documentElement.scrollHeight) + 'px'; }
+    } catch (e) { frame.style.height = '1000px'; }
+  }
+  function show(v) {
+    if (!views[v]) v = 'er';
+    tabs.forEach(function (b) { b.setAttribute('aria-selected', b.getAttribute('data-v') === v ? 'true' : 'false'); });
+    if (frame.getAttribute('src') !== views[v]) frame.setAttribute('src', views[v]);
+    try { if (location.hash !== '#' + v) history.replaceState(null, '', '#' + v); } catch (e) {}
+    window.scrollTo(0, 0);
+  }
+  tabs.forEach(function (b) { b.addEventListener('click', function () { show(b.getAttribute('data-v')); }); });
+  frame.addEventListener('load', function () { fit(); setTimeout(fit, 400); setTimeout(fit, 1500); });
+  window.addEventListener('resize', fit);
+  window.addEventListener('hashchange', function () { show(location.hash.slice(1)); });
+  var start = location.hash.slice(1);
+  if (views[start] && start !== 'er') show(start);
+})();
+</script>
+</body>
+</html>
