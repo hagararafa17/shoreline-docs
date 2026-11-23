@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+# raw data stays out of git
+data/
+*.gpkg
+*.tif
+*.zip

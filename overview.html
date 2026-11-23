@@ -1,0 +1,154 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><style>:root{color-scheme:light}body{margin:0;font:14px system-ui}[hidden]{display:none!important}</style></head><body><title>Shoreline Analytics Overview</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout concept: the legend block of a survey sheet. One ruled row per team member; the rings repeat the
+     process numbers of the data flow diagram so every role can be found on it. */
+  :root {
+    --paper: #F0F4F3; --surface: #FAFCFB; --sea: #D8E7EA; --ink: #0E2A33; --ink2: #4A6670; --line: #8AA3AA; --mag: #B01E63;
+    --f-head: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --paper: #091317; --surface: #0E1D23; --sea: #15333D; --ink: #D5E7EB; --ink2: #8DA6AE; --line: #3C5A64; --mag: #FF6FA8; color-scheme: dark; }
+  }
+  :root[data-theme="dark"] { --paper: #091317; --surface: #0E1D23; --sea: #15333D; --ink: #D5E7EB; --ink2: #8DA6AE; --line: #3C5A64; --mag: #FF6FA8; color-scheme: dark; }
+
+  body { background: var(--paper); color: var(--ink); font-family: var(--f-mono); font-size: 12px; line-height: 1.5;
+         padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 26px 30px; }
+  .wrap { max-width: 1190px; margin: 0 auto; }
+  .sheet { position: relative; border: 1px solid var(--ink); padding: 26px 26px 26px; }
+  .sheet::before { content: ""; position: absolute; inset: 6px; border: 1px solid var(--ink); pointer-events: none; }
+  .tk { position: absolute; pointer-events: none; }
+  .tk.t, .tk.b { left: 0; right: 0; height: 6px; background: repeating-linear-gradient(90deg, var(--ink) 0 1px, transparent 1px 40px); }
+  .tk.l, .tk.r { top: 0; bottom: 0; width: 6px; background: repeating-linear-gradient(0deg, var(--ink) 0 1px, transparent 1px 40px); }
+  .tk.t { top: 0; } .tk.b { bottom: 0; } .tk.l { left: 0; } .tk.r { right: 0; }
+
+  .inner { padding: 14px 18px 6px; }
+  .k { font-family: var(--f-head); font-weight: 500; font-size: 12.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink2); margin: 0 0 6px; }
+  h1 { font-family: var(--f-head); font-weight: 600; font-size: 52px; line-height: .95; letter-spacing: .01em; text-transform: uppercase; margin: 0 0 22px; }
+
+  .row { display: grid; grid-template-columns: minmax(180px, 250px) 1fr minmax(210px, 300px); gap: 8px 32px; padding: 20px 0; border-top: 1px solid var(--ink); align-items: start; }
+  .row:last-child { border-bottom: 1px solid var(--ink); }
+  .who h2 { font-family: var(--f-head); font-weight: 600; font-size: 30px; line-height: 1; letter-spacing: .02em; text-transform: uppercase; margin: 0 0 6px; }
+  .who p { margin: 0; color: var(--ink2); font-size: 11.5px; }
+  .does h3, .rings h3 { font-family: var(--f-head); font-weight: 500; font-size: 12.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink2); margin: 0 0 6px; }
+  .does ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  .does li { padding-left: 15px; position: relative; font-size: 12px; }
+  .does li::before { content: ""; position: absolute; left: 1px; top: .55em; width: 5px; height: 5px; border: 1px solid var(--ink2); transform: rotate(45deg); }
+  .dl { margin: 8px 0 0 !important; font-family: var(--f-head); font-weight: 500; font-size: 13px !important; letter-spacing: .12em; text-transform: uppercase; color: var(--mag) !important; }
+  .does h3 + ul + h3 { margin-top: 14px; }
+  .ring-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .ring { width: 58px; height: 58px; border-radius: 50%; border: 1.4px solid var(--ink); background: var(--surface); display: grid; place-items: center; position: relative;
+          font-family: var(--f-head); font-weight: 600; font-size: 17px; letter-spacing: .05em; color: var(--ink2); }
+  .ring::before { content: ""; position: absolute; inset: 4px; border-radius: 50%; border: 1px solid var(--line); }
+  .ring.pend { border-style: dashed; border-color: var(--ink2); }
+  .ring.pend::before { border-style: dashed; }
+  .ring small { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 3px; white-space: nowrap; font-family: var(--f-mono); font-weight: 400; font-size: 9.5px; letter-spacing: 0; color: var(--ink2); }
+  .ring-row { padding-bottom: 14px; }
+  .note { margin: 18px 0 0; color: var(--ink2); font-size: 11px; display: flex; gap: 20px; flex-wrap: wrap; }
+  .note i { display: inline-block; width: 18px; height: 0; border-top: 1.5px solid var(--ink); vertical-align: middle; margin-right: 7px; }
+  .note i.d { border-top-style: dashed; border-color: var(--ink2); }
+
+  .row { animation: rise .6s cubic-bezier(.2,.7,.2,1) calc(var(--i) * .08s) backwards; }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+  @media (prefers-reduced-motion: reduce) { .row { animation: none; } }
+  @media (max-width: 760px) { .row { grid-template-columns: 1fr; } h1 { font-size: 40px; } .inner { padding-inline: 4px; } }
+
+  :root { --r1: #BFD9DD; --r2: #8FB9C1; --r3: #E6ECEB; --r4: #E7A8C3; --r5: #B01E63; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --r1: #1D4553; --r2: #2F6F80; --r3: #15333D; --r4: #9C3A66; --r5: #FF6FA8; } }
+  :root[data-theme="dark"] { --r1: #1D4553; --r2: #2F6F80; --r3: #15333D; --r4: #9C3A66; --r5: #FF6FA8; }
+  .lede { max-width: 62ch; font-size: 13.5px; line-height: 1.6; margin: 0 0 24px; color: var(--ink); }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); margin-bottom: 30px; }
+  .st { padding: 14px 16px 12px; border-left: 1px solid var(--line); }
+  .st:first-child { border-left: 0; padding-left: 0; }
+  .st b { display: block; font-family: var(--f-head); font-weight: 600; font-size: 54px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .st span { font-family: var(--f-head); font-weight: 500; font-size: 12.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink2); }
+  h3.s { font-family: var(--f-head); font-weight: 500; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink2); margin: 0 0 10px; }
+  .cols { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 28px 44px; margin-bottom: 30px; }
+  .rbar { display: flex; height: 34px; border: 1px solid var(--ink); margin-bottom: 8px; background: var(--surface); }
+  .rbar i { display: block; height: 100%; transform-origin: 0 50%; animation: grow .9s cubic-bezier(.2,.7,.2,1) calc(var(--i) * .1s) backwards; border-left: 1px solid var(--ink); }
+  .rbar i:first-child { border-left: 0; }
+  @keyframes grow { from { transform: scaleX(0); } }
+  .leg { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 11px; color: var(--ink2); margin-bottom: 18px; }
+  .leg span::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; border: 1px solid var(--ink); background: var(--c); }
+  table { border-collapse: collapse; width: 100%; font-size: 11.5px; }
+  th { font-family: var(--f-head); font-weight: 500; font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink2); text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--ink); }
+  th:first-child, td:first-child { text-align: left; }
+  td { padding: 7px 8px; border-bottom: 1px solid var(--line); text-align: right; font-variant-numeric: tabular-nums; }
+  .tw { overflow-x: auto; }
+  .find { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .find li { padding-left: 17px; position: relative; font-size: 12.5px; line-height: 1.55; }
+  .find li::before { content: ""; position: absolute; left: 1px; top: .5em; width: 6px; height: 6px; background: var(--mag); transform: rotate(45deg); }
+  .box { border: 1px solid var(--ink); background: var(--surface); padding: 14px 18px; position: relative; margin-bottom: 30px; }
+  .box::after { content: ""; position: absolute; inset: 3px; border: 1px solid var(--line); pointer-events: none; }
+  .box > * { position: relative; z-index: 1; }
+  .box ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 4px; }
+  .box p { margin: 0; }
+  .tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); border-top: 1px solid var(--ink); }
+  .tabs div { padding: 12px 14px 12px 0; border-bottom: 1px solid var(--line); }
+  .tabs b { font-family: var(--f-head); font-weight: 600; font-size: 16px; letter-spacing: .08em; text-transform: uppercase; display: block; }
+  .tabs span { color: var(--ink2); font-size: 11.5px; }
+  .tag { display: inline-block; font-family: var(--f-head); font-weight: 600; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--mag); border: 1px solid var(--mag); padding: 1px 8px; margin-bottom: 14px; }
+  @media (max-width: 860px) { .cols { grid-template-columns: 1fr; } }
+</style>
+
+<div class="wrap"><div class="sheet"><i class="tk t"></i><i class="tk b"></i><i class="tk l"></i><i class="tk r"></i>
+<div class="inner">
+<p class="k">Alexandria coast · 2018–2026</p>
+<h1>Shoreline Analytics</h1>
+<span class="tag">Provisional results</span>
+<p class="lede">A PostGIS database for the satellite shoreline of Alexandria. It holds nine years of Sentinel-2 shorelines, the rate at which the shoreline moves along 145 transects, a Risk Class for each and a Confidence Score that says how far to trust it.</p>
+<div class="stats">
+  <div class="st"><b data-n="3">3</b><span>sectors</span></div>
+  <div class="st"><b data-n="205">205</b><span>shoreline segments</span></div>
+  <div class="st"><b data-n="145">145</b><span>transects</span></div>
+  <div class="st"><b data-n="7">7</b><span>tables</span></div>
+</div>
+<div class="cols">
+  <div>
+    <h3 class="s">Risk Class of the 145 transects</h3>
+    <div class="rbar" role="img" aria-label="Very low 31, low 20, moderate 81, high 5, very high 8"><i style="--i:0;--c:var(--r1);background:var(--r1);width:21.38%" title="Very low: 31"></i><i style="--i:1;--c:var(--r2);background:var(--r2);width:13.79%" title="Low: 20"></i><i style="--i:2;--c:var(--r3);background:var(--r3);width:55.86%" title="Moderate: 81"></i><i style="--i:3;--c:var(--r4);background:var(--r4);width:3.45%" title="High: 5"></i><i style="--i:4;--c:var(--r5);background:var(--r5);width:5.52%" title="Very high: 8"></i></div>
+    <div class="leg"><span style="--c:var(--r1)">Very low · 31</span><span style="--c:var(--r2)">Low · 20</span><span style="--c:var(--r3)">Moderate · 81</span><span style="--c:var(--r4)">High · 5</span><span style="--c:var(--r5)">Very high · 8</span></div>
+  </div>
+  <div>
+    <h3 class="s">What the data says</h3>
+    <ul class="find">
+      <li>In every sector the median transect moves slightly seaward (+0.2 to +0.9 m a year), so no sector shows clear erosion overall.</li>
+      <li>Four transects in Montaza Bay show accretion that holds up statistically. They are local, not a trend of the whole bay.</li>
+      <li>13 transects fall in the High or Very high class, but none has a high Confidence Score. Treat them as places to check, not as findings.</li>
+      <li>Risk describes how big the change is. Confidence describes how strong the evidence is. They are kept apart on purpose.</li>
+    </ul>
+  </div>
+</div>
+<h3 class="s">By sector</h3><div class="tw" style="margin-bottom:30px"><table><tr><th>Sector</th><th>Transects</th><th>Median m/yr</th><th>Mean m/yr</th><th>Erosion / accretion</th><th>High risk</th><th>…and trusted</th><th>Significant</th><th>Mean confidence</th></tr><tr><td>Corniche Infill</td><td>42</td><td>0.228</td><td>0.257</td><td>13 / 27</td><td>6</td><td>1</td><td>0</td><td>0.500</td></tr><tr><td>Eastern Harbour</td><td>26</td><td>0.209</td><td>0.432</td><td>10 / 15</td><td>1</td><td>1</td><td>0</td><td>0.537</td></tr><tr><td>Montaza Bay</td><td>77</td><td>0.933</td><td>1.453</td><td>14 / 62</td><td>6</td><td>0</td><td>4</td><td>0.552</td></tr></table></div>
+
+<div class="box"><h3 class="s">Limits to keep in mind</h3><ul>
+<li>All shorelines and rates are provisional. Independent validation is still pending.</li>
+<li>The shoreline is a water-mask proxy at 10 m resolution, not a surveyed line.</li>
+<li>Landsat 9 was compared for 2026 only, so it does not validate the other years.</li>
+<li>Most transects fit a straight line poorly (median R squared 0.13). Only 4 of 145 pass the corrected significance test.</li>
+<li>The Confidence Score weights are this project's proposal. They are stored in a table and can be changed.</li></ul></div>
+<h3 class="s">Pages</h3>
+<div class="tabs">
+<div><b>ER</b><span>The seven tables and how they link.</span></div>
+<div><b>DFD</b><span>How data moves from the satellite to the dashboard.</span></div>
+<div><b>Activity</b><span>The loading and risk steps, lane by lane.</span></div>
+<div><b>Logical</b><span>Entities, attributes, keys and rules.</span></div>
+<div><b>Physical</b><span>The real SQL, with run order.</span></div>
+<div><b>Team</b><span>Who owns which task and document.</span></div>
+</div>
+</div></div></div>
+<script>
+(function(){
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce) return;
+  [].forEach.call(document.querySelectorAll('.st b'), function (el) {
+    var n = +el.getAttribute('data-n'), t0 = null;
+    function f(ts) { if (t0 === null) t0 = ts; var p = Math.min(1, (ts - t0) / 900); el.textContent = Math.round(n * (1 - Math.pow(1 - p, 3))); if (p < 1) requestAnimationFrame(f); }
+    requestAnimationFrame(f);
+  });
+})();
+</script>
+</body></html>
